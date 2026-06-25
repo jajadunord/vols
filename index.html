@@ -625,6 +625,12 @@ function parseDuration(dur) {
   return (h || 0) * 60 + (m || 0);
 }
 
+// Checkbox Google Sheets exportée en TRUE/FALSE dans le CSV
+function isSoloFlight(f) {
+  const v = (f.solo || '').trim().toUpperCase();
+  return v === 'TRUE' || v === '1' || v === 'OUI';
+}
+
 function formatDuration(min) {
   const h = Math.floor(min / 60);
   const m = min % 60;
@@ -634,7 +640,7 @@ function formatDuration(min) {
 // ── STATS ───────────────────────────────────────────────
 function computeStats(flights) {
   const totalMin = flights.reduce((s, f) => s + parseDuration(f.duree), 0);
-  const soloFlights = flights.filter(f => f.solo && f.solo.trim() !== '' && f.solo !== '☐').length;
+  const soloFlights = flights.filter(isSoloFlight).length;
   const appareils = [...new Set(flights.map(f => f.appareil).filter(Boolean))];
   const totalPaye = flights.reduce((s, f) => {
     const v = parseFloat((f.prixPaye || '').replace(',', '.').replace(/[^\d.]/g,''));
@@ -720,7 +726,7 @@ function renderList(flights) {
     }
 
     const typeClass = getTypeClass(f.typeVol);
-    const isSolo = f.solo && f.solo.trim() !== '' && f.solo !== '☐';
+    const isSolo = isSoloFlight(f);
     const pax = parseInt(f.nbreLanding) > 1 ? f.nbreLanding + ' ldg' : '';
 
     // Airports — use col12/col14 as additional context if col11/13 is code
@@ -768,7 +774,7 @@ function renderList(flights) {
 function openModal(idx) {
   const f = filtered[idx];
   if (!f) return;
-  const isSolo = f.solo && f.solo.trim() !== '' && f.solo !== '☐';
+  const isSolo = isSoloFlight(f);
   const prixPaye = parseFloat((f.prixPaye || '').replace(',', '.').replace(/[^\d.]/g,''));
   const prixPrevu = parseFloat((f.prixPrevu || '').replace(',', '.').replace(/[^\d.]/g,''));
 
@@ -928,17 +934,72 @@ function applyFilters() {
   renderList(filtered);
 }
 
+// ── HYPERLIENS colonne W via API Sheets (gviz/tq) ────────
+// L'API gviz retourne un JSON avec les hyperlinks sans clé API
+// pour tout fichier partagé publiquement.
+async function fetchHyperlinks() {
+  // On demande uniquement la colonne W (index 22, lettre W)
+  // La requête SQL sélectionne Col1 (date) + Col23 (W) pour matcher les lignes
+  const query = encodeURIComponent('select Col1,Col23');
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=${GID}&tq=${query}`;
+  try {
+    const res = await fetch(url);
+    const text = await res.text();
+    // La réponse commence par "/*O_o*/\ngoogle.visualization.Query.setResponse(" — on l'extrait
+    const json = JSON.parse(text.replace(/^[^(]+\(/, '').replace(/\);?\s*$/, ''));
+    // Construire un map date → hyperlink à partir des rows
+    const linkMap = {};
+    const rows = json.table.rows;
+    rows.forEach(row => {
+      if (!row.c) return;
+      const dateCell = row.c[0];
+      const linkCell = row.c[1];
+      if (!dateCell || !dateCell.v) return;
+      // La date est retournée comme "Date(2026,2,13)" par gviz
+      const dateStr = dateCell.f || ''; // format affiché ex: "13/03/2026"
+      if (linkCell && linkCell.v) {
+        // linkCell.v = URL si hyperlien, sinon valeur texte
+        linkMap[dateStr] = linkCell.v;
+      }
+    });
+    return linkMap;
+  } catch (e) {
+    console.warn('Hyperliens non récupérés:', e);
+    return {};
+  }
+}
+
 // ── LOAD ─────────────────────────────────────────────────
 async function loadData() {
   try {
-    // Use a CORS proxy or direct fetch
-    const res = await fetch(CSV_URL);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const text = await res.text();
+    // Lancer les deux requêtes en parallèle
+    const [csvRes, linkMap] = await Promise.all([
+      fetch(CSV_URL),
+      fetchHyperlinks()
+    ]);
+
+    if (!csvRes.ok) throw new Error(`HTTP ${csvRes.status}`);
+    const text = await csvRes.text();
     const rows = parseCSV(text);
     allFlights = parseFlights(rows);
 
     if (allFlights.length === 0) throw new Error('Aucune donnée trouvée');
+
+    // Injecter les hyperliens dans chaque vol en matchant par date
+    // Le format date dans linkMap vient de gviz (ex: "13/03/2026")
+    // Le format date dans nos vols vient du CSV (ex: "13/03/2026")
+    // On normalise les deux pour matcher
+    allFlights.forEach(f => {
+      // Essayer le format DD/MM/YYYY tel quel
+      const key = f.date.trim();
+      if (linkMap[key]) {
+        f.factureUrl = linkMap[key];
+      } else {
+        // Essayer aussi format avec année 2 chiffres ou autre variante
+        const altKey = Object.keys(linkMap).find(k => k.replace(/\s/g,'') === key.replace(/\s/g,''));
+        if (altKey) f.factureUrl = linkMap[altKey];
+      }
+    });
 
     const stats = computeStats(allFlights);
     renderStats(stats);
