@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Carnet de Vol ULM</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0D1117;
+    --bg2: #161B22;
+    --bg3: #1C2433;
+    --sky: #4FC3F7;
+    --sky-dim: rgba(79,195,247,0.15);
+    --green: #81C784;
+    --green-dim: rgba(129,199,132,0.12);
+    --orange: #FFB74D;
+    --orange-dim: rgba(255,183,77,0.12);
+    --red: #EF5350;
+    --text: #E8EAF6;
+    --text-dim: #8B9CC8;
+    --border: rgba(79,195,247,0.12);
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    overscroll-behavior: none;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 16px 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(12px);
+  }
+  .header-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .header-icon {
+    font-size: 22px;
+    line-height: 1;
+  }
+  .header-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.3px;
+  }
+  .header-sub {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 1px;
+  }
+
+  /* ── STATS ROW ── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .stat-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 8px;
+    text-align: center;
+  }
+  .stat-card.hero {
+    grid-column: 1 / -1;
+    background: linear-gradient(135deg, rgba(79,195,247,0.08) 0%, rgba(129,199,132,0.06) 100%);
+    border-color: rgba(79,195,247,0.3);
+    padding: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+  }
+  .hero-time {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 42px;
+    font-weight: 700;
+    color: var(--sky);
+    letter-spacing: -2px;
+    line-height: 1;
+    text-shadow: 0 0 30px rgba(79,195,247,0.4);
+  }
+  .hero-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-top: 4px;
+  }
+  .hero-divider {
+    width: 1px;
+    height: 40px;
+    background: var(--border);
+  }
+  .hero-right { text-align: left; }
+  .hero-vols {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--green);
+  }
+  .stat-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--sky);
+    line-height: 1.2;
+  }
+  .stat-label {
+    font-size: 9px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 3px;
+  }
+  .stat-card.green .stat-value { color: var(--green); }
+  .stat-card.orange .stat-value { color: var(--orange); }
+
+  /* ── SEARCH ── */
+  .search-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+    align-items: center;
+  }
+  .search-input {
+    flex: 1;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    padding: 9px 12px 9px 34px;
+    outline: none;
+    position: relative;
+  }
+  .search-input::placeholder { color: var(--text-dim); }
+  .search-input:focus { border-color: var(--sky); }
+  .search-wrap {
+    position: relative;
+    flex: 1;
+  }
+  .search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 13px;
+    color: var(--text-dim);
+    pointer-events: none;
+  }
+  .sort-btn {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-dim);
+    padding: 9px 10px;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+    font-family: 'Inter', sans-serif;
+  }
+  .sort-btn.active { border-color: var(--sky); color: var(--sky); }
+
+  /* ── FILTER PILLS ── */
+  .filter-pills {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 12px;
+    scrollbar-width: none;
+  }
+  .filter-pills::-webkit-scrollbar { display: none; }
+  .pill {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--text-dim);
+    font-size: 11px;
+    font-family: 'Inter', sans-serif;
+    padding: 5px 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .pill.active {
+    background: var(--sky-dim);
+    border-color: var(--sky);
+    color: var(--sky);
+  }
+
+  /* ── FLIGHT LIST ── */
+  .list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 16px 8px;
+  }
+  .list-count {
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .list-count span {
+    color: var(--sky);
+    font-weight: 600;
+  }
+
+  .flights-container {
+    padding: 0 16px 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* ── FLIGHT CARD ── */
+  .flight-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .flight-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--sky);
+    border-radius: 0 2px 2px 0;
+    opacity: 0.6;
+  }
+  .flight-card.type-nav::before { background: var(--sky); }
+  .flight-card.type-tour::before { background: var(--green); }
+  .flight-card.type-sortie::before { background: var(--orange); }
+  .flight-card.type-touch::before { background: #CE93D8; }
+  .flight-card.type-approche::before { background: #80CBC4; }
+  .flight-card:active { background: var(--bg3); border-color: var(--sky); }
+
+  .card-row1 {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+  }
+  .card-date {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .card-dur {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--sky);
+  }
+
+  .card-route {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 7px;
+  }
+  .card-airport {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    background: var(--bg3);
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+  .card-arrow {
+    color: var(--text-dim);
+    font-size: 11px;
+    flex: 1;
+    text-align: center;
+  }
+
+  .card-tags {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .tag {
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .tag-type { background: var(--sky-dim); color: var(--sky); border: 1px solid rgba(79,195,247,0.2); }
+  .tag-appareil { background: var(--bg3); color: var(--text-dim); border: 1px solid var(--border); }
+  .tag-instr { background: var(--green-dim); color: var(--green); border: 1px solid rgba(129,199,132,0.2); }
+  .tag-pax { background: var(--orange-dim); color: var(--orange); border: 1px solid rgba(255,183,77,0.2); }
+  .tag-solo { background: rgba(206,147,216,0.12); color: #CE93D8; border: 1px solid rgba(206,147,216,0.2); }
+
+  .card-meta {
+    display: flex;
+    gap: 10px;
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+  .card-meta-item { display: flex; align-items: center; gap: 3px; }
+
+  /* Rating stars */
+  .stars { color: var(--orange); font-size: 10px; letter-spacing: 1px; }
+
+  /* ── DETAIL MODAL ── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(13,17,23,0.85);
+    z-index: 200;
+    display: flex;
+    align-items: flex-end;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    backdrop-filter: blur(4px);
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius) var(--radius) 0 0;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 20px 20px 40px;
+    transform: translateY(30px);
+    transition: transform 0.25s ease;
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+  .modal-handle {
+    width: 36px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 auto 20px;
+  }
+  .modal-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .modal-subtitle { font-size: 12px; color: var(--text-dim); margin-bottom: 20px; }
+  .modal-section-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+    margin-top: 18px;
+  }
+  .modal-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .modal-item {
+    background: var(--bg3);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+  }
+  .modal-item-label { font-size: 10px; color: var(--text-dim); margin-bottom: 3px; }
+  .modal-item-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .modal-item.full { grid-column: 1 / -1; }
+  .modal-comment {
+    background: var(--bg3);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text);
+    border-left: 3px solid var(--sky);
+  }
+  .modal-close {
+    position: absolute;
+    top: 16px; right: 20px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    width: 30px; height: 30px;
+    color: var(--text-dim);
+    font-size: 14px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .modal-price {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--green);
+  }
+  .price-paid { font-size: 12px; color: var(--text-dim); }
+
+  /* ── EMPTY / LOADER ── */
+  .loader {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-dim);
+  }
+  .loader-spinner {
+    width: 40px; height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--sky);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .empty-msg { font-size: 13px; color: var(--text-dim); text-align: center; padding: 40px 20px; }
+
+  .year-divider {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    padding: 8px 0 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .year-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .error-msg {
+    background: rgba(239,83,80,0.1);
+    border: 1px solid rgba(239,83,80,0.3);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    font-size: 13px;
+    color: var(--red);
+    margin: 16px;
+    text-align: center;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <span class="header-icon">✈️</span>
+    <div>
+      <div class="header-title">Carnet de Vol ULM</div>
+      <div class="header-sub" id="lastUpdate">Chargement…</div>
+    </div>
+  </div>
+
+  <div class="stats-row" id="statsRow">
+    <div class="stat-card hero">
+      <div class="loader-spinner" style="width:24px;height:24px;border-width:2px;margin:0"></div>
+    </div>
+  </div>
+
+  <div class="search-bar">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input class="search-input" type="search" placeholder="Lieu, instructeur, commentaire…" id="searchInput">
+    </div>
+    <button class="sort-btn" id="sortBtn" onclick="toggleSort()">↓ Date</button>
+  </div>
+
+  <div class="filter-pills" id="filterPills">
+    <div class="pill active" onclick="setFilter('all', this)">Tous</div>
+    <div class="pill" onclick="setFilter('Nav', this)">Nav</div>
+    <div class="pill" onclick="setFilter('Tour de piste', this)">Tour de piste</div>
+    <div class="pill" onclick="setFilter('Touch', this)">Touch & Go</div>
+    <div class="pill" onclick="setFilter('Sortie', this)">Sortie de piste</div>
+    <div class="pill" onclick="setFilter('Approche', this)">Approche</div>
+  </div>
+</div>
+
+<div class="list-header" id="listHeader" style="display:none">
+  <div class="list-count"><span id="countVal">—</span> vol(s) affiché(s)</div>
+</div>
+
+<div class="flights-container" id="flightsContainer">
+  <div class="loader">
+    <div class="loader-spinner"></div>
+    <div>Chargement du carnet de vol…</div>
+  </div>
+</div>
+
+<!-- MODAL DETAIL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <div class="modal-handle"></div>
+    <button class="modal-close" onclick="closeModalBtn()">✕</button>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────
+const SHEET_ID = '1DGjDp9DVIutAz_8RLiMeS2VM7IQ5KTpk9BenZHTzxZQ';
+const GID      = '1344811232';
+const CSV_URL  = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}`;
+
+// ── STATE ───────────────────────────────────────────────
+let allFlights = [];
+let filtered   = [];
+let activeFilter = 'all';
+let sortDesc   = true;
+let searchVal  = '';
+
+// ── CSV PARSING ─────────────────────────────────────────
+function parseCSV(text) {
+  const lines = text.split('\n');
+  const rows = lines.map(line => {
+    const cells = [];
+    let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') {
+        if (inQ && line[i+1] === '"') { cur += '"'; i++; }
+        else { inQ = !inQ; }
+      } else if (c === ',' && !inQ) {
+        cells.push(cur.trim()); cur = '';
+      } else { cur += c; }
+    }
+    cells.push(cur.trim());
+    return cells;
+  });
+  return rows;
+}
+
+// ── COLUMN MAP (from screenshot) ────────────────────────
+// A=Date B=Heure départ C=Appareil D=Immat E=Durée F=Instructeur
+// G=Nuages H=Vents I=Visibilité J=Nbre Landing K=Type de vol
+// L=Lieu départ M= N=Lieu arrivée O= P=Commentaires
+// Q=Heure Prévu R=Prix Payé S=Paiement T=Qualité U=Solo V=W=N°facture
+function parseFlights(rows) {
+  // Row 0 = Nbre vol / stats, row 1 = headers, rows 2+ = data
+  const flights = [];
+  for (let i = 2; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r[0] || r[0].trim() === '') continue;
+    const f = {
+      date:        r[0]  || '',
+      heure:       r[1]  || '',
+      appareil:    r[2]  || '',
+      immat:       r[3]  || '',
+      duree:       r[4]  || '',
+      instructeur: r[5]  || '',
+      nuages:      r[6]  || '',
+      vent:        r[7]  || '',
+      visibilite:  r[8]  || '',
+      nbreLanding: r[9]  || '',
+      typeVol:     r[10] || '',
+      lieuDep:     r[11] || '',
+      col12:       r[12] || '',
+      lieuArr:     r[13] || '',
+      col14:       r[14] || '',
+      commentaires:r[15] || '',
+      prixPrevu:   r[16] || '',
+      prixPaye:    r[17] || '',
+      paiement:    r[18] || '',
+      qualite:     r[19] || '',
+      solo:        r[20] || '',
+      facture:     r[21] || '',
+    };
+    // Parse date
+    f.dateObj = parseDate(f.date);
+    flights.push(f);
+  }
+  return flights;
+}
+
+function parseDate(s) {
+  if (!s) return null;
+  const parts = s.split('/');
+  if (parts.length === 3) {
+    const [d, m, y] = parts;
+    return new Date(`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`);
+  }
+  return null;
+}
+
+function parseDuration(dur) {
+  if (!dur) return 0;
+  const [h, m] = dur.split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+function formatDuration(min) {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${h}h${String(m).padStart(2,'0')}`;
+}
+
+// ── STATS ───────────────────────────────────────────────
+function computeStats(flights) {
+  const totalMin = flights.reduce((s, f) => s + parseDuration(f.duree), 0);
+  const soloFlights = flights.filter(f => f.solo && f.solo.trim() !== '' && f.solo !== '☐').length;
+  const appareils = [...new Set(flights.map(f => f.appareil).filter(Boolean))];
+  const totalPaye = flights.reduce((s, f) => {
+    const v = parseFloat((f.prixPaye || '').replace(',', '.').replace(/[^\d.]/g,''));
+    return s + (isNaN(v) ? 0 : v);
+  }, 0);
+  return { totalMin, soloFlights, appareils, totalPaye, count: flights.length };
+}
+
+function renderStats(stats) {
+  const { totalMin, soloFlights, appareils, totalPaye, count } = stats;
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat-card hero">
+      <div>
+        <div class="hero-time">${formatDuration(totalMin)}</div>
+        <div class="hero-label">Temps de vol total</div>
+      </div>
+      <div class="hero-divider"></div>
+      <div class="hero-right">
+        <div class="hero-vols">${count} vols</div>
+        <div class="hero-label" style="margin-top:2px">enregistrés</div>
+      </div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-value">${soloFlights}</div>
+      <div class="stat-label">Vols solo</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">${appareils.length}</div>
+      <div class="stat-label">Appareils</div>
+    </div>
+    <div class="stat-card orange">
+      <div class="stat-value">${totalPaye > 0 ? totalPaye.toFixed(0) + ' €' : '—'}</div>
+      <div class="stat-label">Total payé</div>
+    </div>
+  `;
+}
+
+// ── TYPE DETECTION ──────────────────────────────────────
+function getTypeClass(typeVol) {
+  if (!typeVol) return '';
+  const t = typeVol.toLowerCase();
+  if (t.includes('nav')) return 'type-nav';
+  if (t.includes('tour')) return 'type-tour';
+  if (t.includes('sortie')) return 'type-sortie';
+  if (t.includes('touch') || t.includes('go')) return 'type-touch';
+  if (t.includes('approche')) return 'type-approche';
+  return '';
+}
+
+function getTypeShort(typeVol) {
+  if (!typeVol) return 'Vol';
+  const t = typeVol.trim();
+  if (t.length <= 15) return t;
+  return t.substring(0, 14) + '…';
+}
+
+function renderStars(qual) {
+  if (!qual) return '';
+  const count = (qual.match(/★/g) || []).length;
+  if (count === 0) return '';
+  return '<span class="stars">' + '★'.repeat(count) + '☆'.repeat(Math.max(0, 5-count)) + '</span>';
+}
+
+// ── RENDER LIST ─────────────────────────────────────────
+function renderList(flights) {
+  const container = document.getElementById('flightsContainer');
+  document.getElementById('listHeader').style.display = 'flex';
+  document.getElementById('countVal').textContent = flights.length;
+
+  if (flights.length === 0) {
+    container.innerHTML = '<div class="empty-msg">Aucun vol trouvé pour ces critères.</div>';
+    return;
+  }
+
+  let html = '';
+  let lastYear = null;
+
+  flights.forEach((f, idx) => {
+    const year = f.dateObj ? f.dateObj.getFullYear() : '?';
+    if (year !== lastYear) {
+      html += `<div class="year-divider">${year}</div>`;
+      lastYear = year;
+    }
+
+    const typeClass = getTypeClass(f.typeVol);
+    const isSolo = f.solo && f.solo.trim() !== '' && f.solo !== '☐';
+    const pax = parseInt(f.nbreLanding) > 1 ? f.nbreLanding + ' ldg' : '';
+
+    // Airports — use col12/col14 as additional context if col11/13 is code
+    const dep = f.lieuDep || '—';
+    const arr = f.lieuArr || dep;
+    const sameAirport = dep === arr;
+
+    html += `
+    <div class="flight-card ${typeClass}" onclick="openModal(${idx})">
+      <div class="card-row1">
+        <div>
+          <div class="card-date">${f.date}</div>
+          <div class="card-meta" style="margin-top:3px">
+            <div class="card-meta-item">🕐 ${f.heure || '—'}</div>
+            ${f.instructeur ? `<div class="card-meta-item">👤 ${f.instructeur}</div>` : ''}
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div class="card-dur">${f.duree || '—'}</div>
+          ${renderStars(f.qualite)}
+        </div>
+      </div>
+
+      <div class="card-route">
+        <div class="card-airport">${dep}</div>
+        <div class="card-arrow">${sameAirport ? '↻' : '──▶'}</div>
+        ${!sameAirport ? `<div class="card-airport">${arr}</div>` : ''}
+      </div>
+
+      <div class="card-tags">
+        ${f.typeVol ? `<span class="tag tag-type">${getTypeShort(f.typeVol)}</span>` : ''}
+        ${f.appareil ? `<span class="tag tag-appareil">${f.appareil}${f.immat ? ' · '+f.immat : ''}</span>` : ''}
+        ${isSolo ? `<span class="tag tag-solo">Solo</span>` : ''}
+        ${f.nbreLanding && f.nbreLanding !== '1' ? `<span class="tag tag-pax">${f.nbreLanding} ldg</span>` : ''}
+      </div>
+
+      ${f.commentaires ? `<div style="font-size:11px;color:var(--text-dim);line-height:1.4;margin-top:2px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${f.commentaires}</div>` : ''}
+    </div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+// ── MODAL ───────────────────────────────────────────────
+function openModal(idx) {
+  const f = filtered[idx];
+  if (!f) return;
+  const isSolo = f.solo && f.solo.trim() !== '' && f.solo !== '☐';
+  const prixPaye = parseFloat((f.prixPaye || '').replace(',', '.').replace(/[^\d.]/g,''));
+  const prixPrevu = parseFloat((f.prixPrevu || '').replace(',', '.').replace(/[^\d.]/g,''));
+
+  document.getElementById('modalContent').innerHTML = `
+    <div class="modal-title">${f.date}  · ${f.duree || '—'}</div>
+    <div class="modal-subtitle">${f.appareil || ''}${f.immat ? ' · ' + f.immat : ''}${f.instructeur ? ' · ' + f.instructeur : ''}</div>
+
+    <div class="modal-section-title">Itinéraire</div>
+    <div class="modal-grid">
+      <div class="modal-item">
+        <div class="modal-item-label">Départ</div>
+        <div class="modal-item-value">${f.lieuDep || '—'}</div>
+      </div>
+      <div class="modal-item">
+        <div class="modal-item-label">Arrivée</div>
+        <div class="modal-item-value">${f.lieuArr || f.lieuDep || '—'}</div>
+      </div>
+      <div class="modal-item">
+        <div class="modal-item-label">Type de vol</div>
+        <div class="modal-item-value">${f.typeVol || '—'}</div>
+      </div>
+      <div class="modal-item">
+        <div class="modal-item-label">Landings</div>
+        <div class="modal-item-value">${f.nbreLanding || '—'}</div>
+      </div>
+      ${isSolo ? `<div class="modal-item"><div class="modal-item-label">Statut</div><div class="modal-item-value" style="color:#CE93D8">✈ Solo</div></div>` : ''}
+      <div class="modal-item">
+        <div class="modal-item-label">Qualité</div>
+        <div class="modal-item-value">${f.qualite || '—'}</div>
+      </div>
+    </div>
+
+    <div class="modal-section-title">Météo</div>
+    <div class="modal-grid">
+      <div class="modal-item">
+        <div class="modal-item-label">Nuages</div>
+        <div class="modal-item-value">${f.nuages || '—'}</div>
+      </div>
+      <div class="modal-item">
+        <div class="modal-item-label">Vents</div>
+        <div class="modal-item-value">${f.vent || '—'}</div>
+      </div>
+      <div class="modal-item full">
+        <div class="modal-item-label">Visibilité</div>
+        <div class="modal-item-value">${f.visibilite || '—'}</div>
+      </div>
+    </div>
+
+    ${f.commentaires ? `
+    <div class="modal-section-title">Commentaires</div>
+    <div class="modal-comment">${f.commentaires}</div>` : ''}
+
+    ${(!isNaN(prixPaye) && prixPaye > 0) ? `
+    <div class="modal-section-title">Financier</div>
+    <div class="modal-grid">
+      <div class="modal-item">
+        <div class="modal-item-label">Prix payé</div>
+        <div class="modal-price">${prixPaye.toFixed(2)} €</div>
+        ${f.paiement ? `<div class="price-paid">${f.paiement}</div>` : ''}
+      </div>
+      ${!isNaN(prixPrevu) && prixPrevu > 0 ? `
+      <div class="modal-item">
+        <div class="modal-item-label">Prix prévu</div>
+        <div class="modal-item-value">${prixPrevu.toFixed(2)} €</div>
+      </div>` : ''}
+      ${f.facture ? `
+      <div class="modal-item full">
+        <div class="modal-item-label">Facture</div>
+        <div class="modal-item-value" style="font-size:12px;word-break:break-all">${f.facture}</div>
+      </div>` : ''}
+    </div>` : ''}
+  `;
+
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modalOverlay')) closeModalBtn();
+}
+function closeModalBtn() {
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+
+// ── FILTER / SEARCH / SORT ───────────────────────────────
+function setFilter(val, el) {
+  activeFilter = val;
+  document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  applyFilters();
+}
+
+function toggleSort() {
+  sortDesc = !sortDesc;
+  const btn = document.getElementById('sortBtn');
+  btn.textContent = sortDesc ? '↓ Date' : '↑ Date';
+  applyFilters();
+}
+
+document.getElementById('searchInput').addEventListener('input', function() {
+  searchVal = this.value.toLowerCase();
+  applyFilters();
+});
+
+function applyFilters() {
+  let list = [...allFlights];
+
+  // Filter by type
+  if (activeFilter !== 'all') {
+    const af = activeFilter.toLowerCase();
+    list = list.filter(f => (f.typeVol || '').toLowerCase().includes(af));
+  }
+
+  // Search
+  if (searchVal) {
+    list = list.filter(f => {
+      const haystack = [f.lieuDep, f.lieuArr, f.instructeur, f.commentaires, f.appareil, f.typeVol, f.date]
+        .join(' ').toLowerCase();
+      return haystack.includes(searchVal);
+    });
+  }
+
+  // Sort
+  list.sort((a, b) => {
+    const da = a.dateObj ? a.dateObj.getTime() : 0;
+    const db = b.dateObj ? b.dateObj.getTime() : 0;
+    return sortDesc ? db - da : da - db;
+  });
+
+  filtered = list;
+  renderList(filtered);
+}
+
+// ── LOAD ─────────────────────────────────────────────────
+async function loadData() {
+  try {
+    // Use a CORS proxy or direct fetch
+    const res = await fetch(CSV_URL);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    const rows = parseCSV(text);
+    allFlights = parseFlights(rows);
+
+    if (allFlights.length === 0) throw new Error('Aucune donnée trouvée');
+
+    const stats = computeStats(allFlights);
+    renderStats(stats);
+
+    document.getElementById('lastUpdate').textContent =
+      `Mis à jour · ${allFlights.length} vols`;
+
+    applyFilters();
+  } catch (err) {
+    console.error(err);
+    document.getElementById('statsRow').innerHTML =
+      `<div class="stat-card hero" style="grid-column:1/-1;color:var(--red);">⚠ Erreur de chargement</div>`;
+    document.getElementById('flightsContainer').innerHTML = `
+      <div class="error-msg">
+        Impossible de charger les données depuis Google Sheets.<br><br>
+        Assurez-vous que le fichier est partagé en accès public<br>
+        (Partager → "Toute personne disposant du lien").<br><br>
+        <small style="color:var(--text-dim)">${err.message}</small>
+      </div>`;
+  }
+}
+
+loadData();
+</script>
+</body>
+</html>
