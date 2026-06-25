@@ -594,7 +594,7 @@ function parseFlights(rows) {
       paiement:    r[18] || '',
       qualite:     r[19] || '',
       solo:        r[20] || '',
-      facture:     r[22] || '',
+      facture:     r[21] || '',
     };
     // Parse date
     f.dateObj = parseDate(f.date);
@@ -839,11 +839,29 @@ function openModal(idx) {
         <div class="modal-item-label">Scan facture</div>
         <div class="modal-item-value">
           ${/^https?:\/\//i.test(f.facture)
-            ? `<a href="${f.facture}" target="_blank" rel="noopener"
-                 style="color:var(--sky);text-decoration:none;display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500">
-                 📄 Ouvrir le scan
-                 <span style="font-size:10px;opacity:0.7">↗</span>
-               </a>`
+            ? (() => {
+                // Extraire l'ID Google Drive depuis les formats courants :
+                // /file/d/ID/view  ou  id=ID  ou  /d/ID
+                const driveMatch = f.facture.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) ||
+                                   f.facture.match(/[?&]id=([a-zA-Z0-9_-]+)/) ||
+                                   f.facture.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                if (driveMatch) {
+                  const fileId = driveMatch[1];
+                  const previewUrl  = 'https://drive.google.com/file/d/' + fileId + '/preview';
+                  const downloadUrl = 'https://drive.google.com/uc?export=download&id=' + fileId;
+                  return '<a href="' + previewUrl + '" target="_blank" rel="noopener" ' +
+                    'style="color:var(--sky);text-decoration:none;display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;margin-bottom:8px">' +
+                    '📄 Voir le scan ↗</a>' +
+                    '<br>' +
+                    '<a href="' + downloadUrl + '" target="_blank" rel="noopener" ' +
+                    'style="color:var(--text-dim);text-decoration:none;display:inline-flex;align-items:center;gap:5px;font-size:11px;margin-top:4px">' +
+                    '⬇ Télécharger le PDF</a>';
+                }
+                // URL générique non-Drive
+                return '<a href="' + f.facture + '" target="_blank" rel="noopener" ' +
+                  'style="color:var(--sky);text-decoration:none;font-size:13px;font-weight:500">' +
+                  '📄 Ouvrir le scan ↗</a>';
+              })()
             : `<span style="font-size:12px;word-break:break-all">${f.facture}</span>`
           }
         </div>
