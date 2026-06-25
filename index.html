@@ -605,10 +605,16 @@ function parseFlights(rows) {
 
 function parseDate(s) {
   if (!s) return null;
+  // Nettoyer les espaces, \r, \n éventuels du CSV
+  s = s.replace(/[\r\n\s]/g, '');
   const parts = s.split('/');
   if (parts.length === 3) {
-    const [d, m, y] = parts;
-    return new Date(`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`);
+    const d = parts[0].padStart(2,'0');
+    const m = parts[1].padStart(2,'0');
+    const y = parts[2];
+    // Construire via les composants entiers pour éviter les ambiguïtés de parsing ISO
+    const dateObj = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
+    return isNaN(dateObj.getTime()) ? null : dateObj;
   }
   return null;
 }
@@ -830,8 +836,17 @@ function openModal(idx) {
       </div>` : ''}
       ${f.facture ? `
       <div class="modal-item full">
-        <div class="modal-item-label">Facture</div>
-        <div class="modal-item-value" style="font-size:12px;word-break:break-all">${f.facture}</div>
+        <div class="modal-item-label">Scan facture</div>
+        <div class="modal-item-value">
+          ${/^https?:\/\//i.test(f.facture)
+            ? `<a href="${f.facture}" target="_blank" rel="noopener"
+                 style="color:var(--sky);text-decoration:none;display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500">
+                 📄 Ouvrir le scan
+                 <span style="font-size:10px;opacity:0.7">↗</span>
+               </a>`
+            : `<span style="font-size:12px;word-break:break-all">${f.facture}</span>`
+          }
+        </div>
       </div>` : ''}
     </div>` : ''}
   `;
