@@ -579,8 +579,8 @@ function parseCSV(text) {
 // ── COLUMN MAP (from screenshot) ────────────────────────
 // A=Date B=Heure départ C=Appareil D=Immat E=Durée F=Instructeur
 // G=Nuages H=Vents I=Visibilité J=Nbre Landing K=Type de vol
-// L=Lieu départ M= N=Lieu arrivée O= P=Commentaires
-// Q=Heure Prévu R=Prix Payé S=Paiement T=Qualité U=Solo V=W=N°facture
+// L=Code départ M=Nom terrain départ N=Code arrivée O=Nom terrain arrivée P=Commentaires
+// Q=Heure Prévu R=Prix Payé S=Paiement T=Qualité U=Solo V= W=N°facture X=URL facture
 function parseFlights(rows) {
   // Row 0 = Nbre vol / stats, row 1 = headers, rows 2+ = data
   const flights = [];
@@ -600,9 +600,9 @@ function parseFlights(rows) {
       nbreLanding: r[9]  || '',
       typeVol:     r[10] || '',
       lieuDep:     r[11] || '',
-      col12:       r[12] || '',
+      nomDep:      r[12] || '',
       lieuArr:     r[13] || '',
-      col14:       r[14] || '',
+      nomArr:      r[14] || '',
       commentaires:r[15] || '',
       prixPrevu:   r[16] || '',
       prixPaye:    r[17] || '',
@@ -750,6 +750,8 @@ function renderList(flights) {
     // Airports — use col12/col14 as additional context if col11/13 is code
     const dep = f.lieuDep || '—';
     const arr = f.lieuArr || dep;
+    const nomDep = f.nomDep || '';
+    const nomArr = f.nomArr || '';
     const sameAirport = dep === arr;
 
     html += `
@@ -769,9 +771,16 @@ function renderList(flights) {
       </div>
 
       <div class="card-route">
-        <div class="card-airport">${dep}</div>
+        <div style="display:flex;flex-direction:column;align-items:flex-start;gap:2px">
+          <div class="card-airport">${dep}</div>
+          ${nomDep ? `<div style="font-size:9px;color:var(--text-dim);padding-left:2px">${nomDep}</div>` : ''}
+        </div>
         <div class="card-arrow">${sameAirport ? '↻' : '──▶'}</div>
-        ${!sameAirport ? `<div class="card-airport">${arr}</div>` : ''}
+        ${!sameAirport ? `
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+          <div class="card-airport">${arr}</div>
+          ${nomArr ? `<div style="font-size:9px;color:var(--text-dim);padding-right:2px">${nomArr}</div>` : ''}
+        </div>` : ''}
       </div>
 
       <div class="card-tags">
@@ -804,11 +813,11 @@ function openModal(idx) {
     <div class="modal-grid">
       <div class="modal-item">
         <div class="modal-item-label">Départ</div>
-        <div class="modal-item-value">${f.lieuDep || '—'}</div>
+        <div class="modal-item-value">${f.lieuDep || '—'}${f.nomDep ? `<span style="display:block;font-size:11px;color:var(--text-dim);font-weight:400;margin-top:2px">${f.nomDep}</span>` : ''}</div>
       </div>
       <div class="modal-item">
         <div class="modal-item-label">Arrivée</div>
-        <div class="modal-item-value">${f.lieuArr || f.lieuDep || '—'}</div>
+        <div class="modal-item-value">${f.lieuArr || f.lieuDep || '—'}${f.nomArr ? `<span style="display:block;font-size:11px;color:var(--text-dim);font-weight:400;margin-top:2px">${f.nomArr}</span>` : ''}</div>
       </div>
       <div class="modal-item">
         <div class="modal-item-label">Type de vol</div>
