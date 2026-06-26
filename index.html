@@ -257,6 +257,21 @@
   .flight-card.type-sortie::before { background: var(--orange); }
   .flight-card.type-touch::before { background: #CE93D8; }
   .flight-card.type-approche::before { background: #80CBC4; }
+  .flight-card.unpaid {
+    border-color: rgba(239,83,80,0.4);
+    background: linear-gradient(135deg, rgba(239,83,80,0.07) 0%, var(--bg2) 60%);
+  }
+  .flight-card.unpaid::before { background: var(--red); opacity: 1; }
+  .tag-unpaid {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--red);
+    background: rgba(239,83,80,0.12);
+    border: 1px solid rgba(239,83,80,0.3);
+    border-radius: 6px;
+    padding: 2px 8px;
+    white-space: nowrap;
+  }
   .flight-card:active { background: var(--bg3); border-color: var(--sky); }
 
   .card-row1 {
@@ -594,7 +609,8 @@ function parseFlights(rows) {
       paiement:    r[18] || '',
       qualite:     r[19] || '',
       solo:        r[20] || '',
-      facture:     r[22] || '',
+      facture:     r[22] || '',   // W = numéro/texte affiché
+      factureUrl:  r[23] || '',   // X = URL brute (à remplir dans Sheets)
     };
     // Parse date
     f.dateObj = parseDate(f.date);
@@ -727,6 +743,8 @@ function renderList(flights) {
 
     const typeClass = getTypeClass(f.typeVol);
     const isSolo = isSoloFlight(f);
+    const isUnpaid = (f.paiement || '').trim().toLowerCase() === 'a payer' ||
+                     (f.paiement || '').trim().toLowerCase() === 'à payer';
     const pax = parseInt(f.nbreLanding) > 1 ? f.nbreLanding + ' ldg' : '';
 
     // Airports — use col12/col14 as additional context if col11/13 is code
@@ -735,7 +753,7 @@ function renderList(flights) {
     const sameAirport = dep === arr;
 
     html += `
-    <div class="flight-card ${typeClass}" onclick="openModal(${idx})">
+    <div class="flight-card ${typeClass}${isUnpaid ? ' unpaid' : ''}" onclick="openModal(${idx})">
       <div class="card-row1">
         <div>
           <div class="card-date">${f.date}</div>
@@ -746,7 +764,7 @@ function renderList(flights) {
         </div>
         <div style="text-align:right">
           <div class="card-dur">${f.duree || '—'}</div>
-          ${renderStars(f.qualite)}
+          ${isUnpaid ? `<span class="tag-unpaid">⚠ À payer</span>` : renderStars(f.qualite)}
         </div>
       </div>
 
@@ -840,35 +858,37 @@ function openModal(idx) {
         <div class="modal-item-label">Prix prévu</div>
         <div class="modal-item-value">${prixPrevu.toFixed(2)} €</div>
       </div>` : ''}
-      ${f.facture ? `
+      ${(f.facture || f.factureUrl) ? `
       <div class="modal-item full">
         <div class="modal-item-label">Scan facture</div>
         <div class="modal-item-value">
-          ${/^https?:\/\//i.test(f.facture)
-            ? (() => {
-                // Extraire l'ID Google Drive depuis les formats courants :
-                // /file/d/ID/view  ou  id=ID  ou  /d/ID
-                const driveMatch = f.facture.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) ||
-                                   f.facture.match(/[?&]id=([a-zA-Z0-9_-]+)/) ||
-                                   f.facture.match(/\/d\/([a-zA-Z0-9_-]+)/);
+          ${(() => {
+              // Priorité : colonne X (URL brute), sinon colonne W si c'est une URL
+              const rawUrl = (f.factureUrl && /^https?:\/\//i.test(f.factureUrl.trim()))
+                ? f.factureUrl.trim()
+                : (/^https?:\/\//i.test((f.facture || '').trim()) ? f.facture.trim() : '');
+              const label = f.facture || 'Facture';
+
+              if (rawUrl) {
+                // Extraire l'ID Google Drive
+                const driveMatch = rawUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) ||
+                                   rawUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/) ||
+                                   rawUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
                 if (driveMatch) {
                   const fileId = driveMatch[1];
-                  const previewUrl  = 'https://drive.google.com/file/d/' + fileId + '/preview';
-                  const downloadUrl = 'https://drive.google.com/uc?export=download&id=' + fileId;
-                  return '<a href="' + previewUrl + '" target="_blank" rel="noopener" ' +
-                    'style="color:var(--sky);text-decoration:none;display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;margin-bottom:8px">' +
-                    '📄 Voir le scan ↗</a>' +
-                    '<br>' +
-                    '<a href="' + downloadUrl + '" target="_blank" rel="noopener" ' +
-                    'style="color:var(--text-dim);text-decoration:none;display:inline-flex;align-items:center;gap:5px;font-size:11px;margin-top:4px">' +
-                    '⬇ Télécharger le PDF</a>';
+                  const viewUrl = 'https://drive.google.com/file/d/' + fileId + '/view';
+                  return '<a href="' + viewUrl + '" target="_blank" rel="noopener" ' +
+                    'style="color:var(--sky);text-decoration:none;display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500">' +
+                    '📄 ' + label + ' ↗</a>';
                 }
                 // URL générique non-Drive
-                return '<a href="' + f.facture + '" target="_blank" rel="noopener" ' +
+                return '<a href="' + rawUrl + '" target="_blank" rel="noopener" ' +
                   'style="color:var(--sky);text-decoration:none;font-size:13px;font-weight:500">' +
-                  '📄 Ouvrir le scan ↗</a>';
-              })()
-            : `<span style="font-size:12px;word-break:break-all">${f.facture}</span>`
+                  '📄 ' + label + ' ↗</a>';
+              }
+              // Pas d'URL — afficher le texte brut (numéro de facture sans lien)
+              return '<span style="font-size:12px;color:var(--text-dim)">' + label + '</span>';
+            })()
           }
         </div>
       </div>` : ''}
@@ -935,32 +955,31 @@ function applyFilters() {
 }
 
 // ── HYPERLIENS colonne W via API Sheets (gviz/tq) ────────
-// L'API gviz retourne un JSON avec les hyperlinks sans clé API
-// pour tout fichier partagé publiquement.
+// Récupère Col1 (date) + Col23 (W) + Col24 (X) pour enrichir les vols
 async function fetchHyperlinks() {
-  // On demande uniquement la colonne W (index 22, lettre W)
-  // La requête SQL sélectionne Col1 (date) + Col23 (W) pour matcher les lignes
-  const query = encodeURIComponent('select Col1,Col23');
+  // On sélectionne les colonnes A (date, pour matcher) + W + X
+  const query = encodeURIComponent('select Col1,Col23,Col24');
   const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=${GID}&tq=${query}`;
   try {
     const res = await fetch(url);
     const text = await res.text();
-    // La réponse commence par "/*O_o*/\ngoogle.visualization.Query.setResponse(" — on l'extrait
     const json = JSON.parse(text.replace(/^[^(]+\(/, '').replace(/\);?\s*$/, ''));
-    // Construire un map date → hyperlink à partir des rows
-    const linkMap = {};
+    // Retourner un tableau indexé par position (index 0 = row 0 du tableau gviz = ligne 1 du sheet)
+    // Les données commencent à la ligne 3 du sheet (index 2), donc offset = 2
     const rows = json.table.rows;
+    // Map date (format affiché) → { factureLabel, factureUrl }
+    const linkMap = {};
     rows.forEach(row => {
       if (!row.c) return;
       const dateCell = row.c[0];
-      const linkCell = row.c[1];
-      if (!dateCell || !dateCell.v) return;
-      // La date est retournée comme "Date(2026,2,13)" par gviz
-      const dateStr = dateCell.f || ''; // format affiché ex: "13/03/2026"
-      if (linkCell && linkCell.v) {
-        // linkCell.v = URL si hyperlien, sinon valeur texte
-        linkMap[dateStr] = linkCell.v;
-      }
+      const wCell    = row.c[1]; // W : numéro/texte
+      const xCell    = row.c[2]; // X : URL brute
+      if (!dateCell || !dateCell.f) return;
+      const dateStr = (dateCell.f || '').trim();
+      linkMap[dateStr] = {
+        facture:    wCell    ? (wCell.v    || '') : '',
+        factureUrl: xCell    ? (xCell.v    || '') : '',
+      };
     });
     return linkMap;
   } catch (e) {
@@ -986,18 +1005,15 @@ async function loadData() {
     if (allFlights.length === 0) throw new Error('Aucune donnée trouvée');
 
     // Injecter les hyperliens dans chaque vol en matchant par date
-    // Le format date dans linkMap vient de gviz (ex: "13/03/2026")
-    // Le format date dans nos vols vient du CSV (ex: "13/03/2026")
-    // On normalise les deux pour matcher
     allFlights.forEach(f => {
-      // Essayer le format DD/MM/YYYY tel quel
       const key = f.date.trim();
-      if (linkMap[key]) {
-        f.factureUrl = linkMap[key];
-      } else {
-        // Essayer aussi format avec année 2 chiffres ou autre variante
-        const altKey = Object.keys(linkMap).find(k => k.replace(/\s/g,'') === key.replace(/\s/g,''));
-        if (altKey) f.factureUrl = linkMap[altKey];
+      const entry = linkMap[key] || Object.entries(linkMap).find(([k]) =>
+        k.replace(/\s/g,'') === key.replace(/\s/g,'')
+      )?.[1];
+      if (entry) {
+        // Priorité colonne X (URL brute) ; si absente, garder ce qu'on a du CSV
+        if (entry.factureUrl) f.factureUrl = entry.factureUrl;
+        if (entry.facture && !f.facture) f.facture = entry.facture;
       }
     });
 
